@@ -1,0 +1,372 @@
+/*
+ * Copyright (c) 2015, Majenko Technologies
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * * Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ *
+ * * Redistributions in binary form must reproduce the above copyright notice, this
+ *   list of conditions and the following disclaimer in the documentation and/or
+ *   other materials provided with the distribution.
+ *
+ * * Neither the name of Majenko Technologies nor the names of its
+ *   contributors may be used to endorse or promote products derived from
+ *   this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+#include <Arduino.h>
+#ifdef esp32dev
+#include <wifi.h>
+#else
+#include <ESP8266WebServer.h>
+#endif
+
+
+
+#include <ArduinoJson.h>
+
+//#include "ElectricManager.h"
+//#include "HourManager.h"
+//#include "SparkfunManager.h"
+#include "WifiManager.h"
+#include "SettingManager.h"
+#include "ioManager.h"
+#include "DHTManager.h"
+#include "BMPManager.h"
+
+//#include <DateTime.h>
+//#include "EmonLib.h"                   // Include Emon Library
+
+#define MQTT_DEBUG
+#define MQTT_ERROR
+#include <Adafruit_MQTT.h>                                 // Adafruit MQTT library
+#include <Adafruit_MQTT_Client.h>                           // Adafruit MQTT library
+#include <WiFiClient.h>
+
+extern "C" {
+#include "user_interface.h"
+}
+
+
+/*#ifdef MCPOC_TEST
+  #define LOG_LABEL "logT"
+  #define WATT_LABEL "wattT"
+  #define CURRENT_LABEL "currentT"
+  #define KWH_LABEL "KWHT"
+  #define HUM_LABEL "HUMT"
+  #define TEMP_LABEL "TEMPT"
+#else*/
+  #define LOG_LABEL  "log"
+  #define HUM_LABEL  "vmc_HUM"
+  #define TEMP_LABEL "vmc_TEMP"
+  #define VITESSE_LABEL "vmc_VTS"
+//#endif
+
+
+#define  pinLed           D4
+#define  pin_VMC_DHT      D2
+#define  pin_VMC_VITESSE  D6
+
+
+
+ESP8266WebServer server ( 80 );
+SettingManager smManager(pinLed);
+//HourManager hrManager(2390,pinLed);
+WifiManager wfManager(pinLed);
+ioManager sfManager(pinLed);
+DHTManager dhtManager(pin_VMC_DHT,pinLed);
+BMPManager bmpManager(D3,D4,pinLed);
+
+
+
+WiFiClient client;
+
+os_timer_t myTimer;
+boolean tickOccured;
+//EnergyMonitor emon1;
+
+const unsigned long timerFrequence = 6000;//ms
+const unsigned long maxNbreMesure = 60000/timerFrequence; // send KPI every minute
+
+//unsigned long m_timeReference=0;
+
+
+
+
+/************ Global State (you don't need to change this!) ******************/
+
+
+// start of timerCallback
+void timerCallback(void *pArg) {
+     tickOccured = true;
+} // End of timerCallback
+
+
+
+void restartESP() {
+  ESP.restart();
+}
+
+void timerrestartESP(void *pArg) {
+    restartESP();
+}
+
+/*JsonObject& prepareResponse(JsonBuffer& jsonBuffer) {
+  JsonObject& root = jsonBuffer.createObject();
+  JsonArray& tempValues = root.createNestedArray("temperature");
+    tempValues.add(pfTemp);
+  JsonArray& humiValues = root.createNestedArray("humidity");
+    humiValues.add(pfHum);
+  JsonArray& dewpValues = root.createNestedArray("dewpoint");
+    dewpValues.add(pfDew);
+  JsonArray& EsPvValues = root.createNestedArray("Systemv");
+    EsPvValues.add(pfVcc/1000, 3);
+  return root;
+}*/
+
+void dataSummaryPage() {
+	digitalWrite ( pinLed, LOW );
+
+  StaticJsonBuffer<500> jsonBuffer;
+  //JsonObject& json = prepareResponse(jsonBuffer);
+
+  JsonObject& root = jsonBuffer.createObject();
+  JsonArray& tempValues = root.createNestedArray("Date Hour");
+    tempValues.add("MA DATe");
+  JsonArray& humiValues = root.createNestedArray("humidity");
+    humiValues.add("humide");
+  JsonArray& dewpValues = root.createNestedArray("dewpoint");
+    dewpValues.add("dev point");
+  JsonArray& EsPvValues = root.createNestedArray("Systemv");
+    EsPvValues.add(25/1000, 3);
+/*root.printTo(Serial);
+root.printTo(server.);*/
+    //server.send ( 200, "text/json", jsonBuffer.prettyPrintTo() );
+    client=server.client ();
+  client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: application/json");
+    client.println("Connection: close");
+    client.println();
+
+    root.prettyPrintTo(client);
+
+
+  /*char temp[400];
+	int sec = millis() / 1000;
+	int min = sec / 60;
+	int hr = min / 60;
+
+  String message =
+  "<html>\
+    <head>\
+      <meta http-equiv='refresh' content='5'/>\
+      <title>Summary page</title>\
+      <style>\
+        body { background-color: #cccccc; font-family: Arial, Helvetica, Sans-Serif; Color: #000088; }\
+      </style>\
+    </head>\
+    <body>\
+      <h1>Real time data!</h1>";
+  message += "<p>" + wfManager.toString() + "</p>";
+  //message += "<p>Date Hour : " + hrManager.toDTString() + "</p>";
+  //message += "<p>Uptime: " + hrManager.toUTString() + "</p>";
+  message += "<p>Temp: " + dhtManager.toString() + "</p>";
+  message += "<h2>Log data</h2>\
+  		<TABLE border=2 cellpadding=10 log>";
+  message += "<TR><TD>"+smManager.log()+"</TD></TR>";
+  message += "<TR><TD>"+sfManager.log()+"</TD></TR>";
+  message += "<TR><TD>"+wfManager.log()+"</TD></TR>";
+  message += "<TR><TD>"+dhtManager.log()+"</TD></TR>";
+  message += "</TABLE>\
+  		        <h2>Links</h2>";
+  message += "<A HREF=\""+WiFi.localIP().toString()+ "\">cette page</A></br>";
+  message += "<A HREF=\"https://io.adafruit.com/"+ String(smManager.m_publicKey) +"\">io.adafruit.com</A></br>\
+              <h2>Commands</h2>\
+              <ul><li>/clear => erase credentials</li>\
+                  <li>/credential => display credential</li>\
+                  <li>/restart => restart module</li>\
+                  <li>/whatever => display summary</li></ul>";
+  message += "</body></html>";
+  server.send ( 200, "text/html", message );
+*/
+  digitalWrite ( pinLed, HIGH );
+
+}
+
+void displayCredentialCollection() {
+	digitalWrite ( pinLed, LOW );
+
+  char temp[400];
+
+  String message =  "<html>\
+    <head>\
+      <title>Credentials page</title>\
+      <style>\
+        body { background-color: #cccccc; font-family: Arial, Helvetica, Sans-Serif; Color: #000088; }\
+      </style>\
+    </head>\
+    <body>";
+  message += "<p>";
+  message +="<ul>";
+  int n = WiFi.scanNetworks();
+  for (int i = 0; i < n; ++i)
+    {
+      // Print SSID and RSSI for each network found
+      message += "<li>";
+      message +=i + 1;
+      message += ": ";
+      message += WiFi.SSID(i);
+      message += " (";
+      message += WiFi.RSSI(i);
+      message += ")";
+      message += (WiFi.encryptionType(i) == ENC_TYPE_NONE)?" ":"*";
+      message += "</li>";
+    }
+  message += "</ul>";
+  message += "<form method='get' action='set'>";
+  message += "<label>SSID:</label><input name='ssid' test length=32 value=\""+String(smManager.m_ssid) +"\"><br>";
+  message += "<label>Pass:</label><input name='pass' length=64 value=\""+String(smManager.m_password) +"\"><br>";
+  message += "<label>PrivateKey:</label><input name='sparkPrivate' length=64 value=\""+String(smManager.m_privateKey) +"\"><br>";
+  message += "<label>PublicKey:</label><input name='sparkPublic' length=64 value=\""+String(smManager.m_publicKey) +"\"><br>";
+  message += "<label>Hum. Seuil:</label><input name='humSeuil' length=64 value=\""+String(smManager.m_HUM_SEUIL) +"\"><br>";
+
+
+
+  message += "<input type='submit'></form>";
+  message += "</body></html>";
+
+  server.send ( 200, "text/html", message );
+
+  digitalWrite ( pinLed, HIGH );
+
+}
+
+void setCredential(){
+  String str = server.arg("ssid");
+  if (str.length()>0)
+    strcpy(smManager.m_ssid, str.c_str());
+  str = server.arg("pass");
+  if (str.length()>0)
+    strcpy(smManager.m_password,str.c_str());
+  str = server.arg("sparkPrivate");
+  if (str.length()>0)
+      strcpy(smManager.m_privateKey,str.c_str());
+  str = server.arg("sparkPublic");
+  if (str.length()>0)
+      strcpy(smManager.m_publicKey,str.c_str());
+  str = server.arg("humSeuil");
+  if (str.length()>0)
+    smManager.m_HUM_SEUIL = atof(str.c_str());
+  smManager.writeData();
+  server.send ( 200, "text/html", "data recorded.restart board");
+}
+
+void clearMemory(){
+  smManager.clearData();
+  server.send ( 200, "text/html", "ok");
+}
+
+
+void setup ( void ) {
+  // Iniialise input
+  pinMode ( pinLed, OUTPUT );
+  pinMode ( pin_VMC_VITESSE, INPUT );
+
+	Serial.begin ( 115200 );
+  Serial.println("6666 beforebgin");
+  bmpManager.begin(BMP085_STANDARD);
+
+  smManager.readData();
+  Serial.println(smManager.toString());
+  if (wfManager.connectSSID(smManager.m_ssid,smManager.m_password )==WL_CONNECTED) {
+    os_timer_setfn(&myTimer, timerCallback, NULL);
+    os_timer_arm(&myTimer, timerFrequence, true);
+    server.on ( "/", dataSummaryPage );
+    server.onNotFound ( dataSummaryPage );
+  } else {
+    os_timer_setfn(&myTimer, timerrestartESP, NULL);
+    os_timer_arm(&myTimer, 5*60*1000, true);
+    /*os_timer_setfn(&myTimer, timerCallback, NULL);
+    os_timer_arm(&myTimer, timerFrequence, true);*/
+    wfManager.connectAP();
+    server.on ( "/", displayCredentialCollection );
+    server.onNotFound ( displayCredentialCollection );
+  }
+  server.on ( "/clear", clearMemory );
+  server.on ( "/restart", restartESP );
+  server.on ( "/set", setCredential );
+  server.on ( "/credential", displayCredentialCollection );
+  server.begin();
+  Serial.println ( "HTTP server started" );
+  Serial.println(wfManager.toString());
+
+
+  //digitalWrite ( pin_VMC_VITESSE,0);
+
+
+}
+
+
+void loop ( void ) {
+  /*delayMicroseconds(500000);
+  pinMode ( pin_VMC_VITESSE, INPUT );
+  digitalWrite(pin_VMC_VITESSE, 1); //On écrit l'état du relais
+  sfManager.switchOn();
+  delayMicroseconds(500000);
+  pinMode ( pin_VMC_VITESSE, OUTPUT );
+  digitalWrite(pin_VMC_VITESSE, 0);
+  sfManager.switchOff();*/
+	server.handleClient();
+  //WiFiClient client = server.available();
+  if (tickOccured) {
+
+  #ifdef MCPOC_TEST
+      Serial.println ("debug mode");
+      Serial.println (dhtManager.toString());
+      Serial.println (bmpManager.toString());
+
+    Serial.print(bmpManager.readTemperature());
+      Serial.println(" *C");
+      Serial.print("Pressure = ");
+      Serial.print(bmpManager.readPressure());
+      Serial.println(" Pa");
+
+  #endif
+
+      //sfManager.addVariable(HUM_LABEL, String(dhtManager.getHumidity()));
+      //sfManager.addVariable(TEMP_LABEL, String(dhtManager.getTemperature()));
+
+      if (dhtManager.getHumidity()>60.0) {
+        pinMode ( pin_VMC_VITESSE, OUTPUT );
+        digitalWrite(pin_VMC_VITESSE, 0);
+        //sfManager.addVariable(VITESSE_LABEL,"2");
+        //sfManager.switchOn();
+      } else {
+        pinMode ( pin_VMC_VITESSE, INPUT );
+        //digitalWrite(pin_VMC_VITESSE, LOW);
+        //sfManager.addVariable(VITESSE_LABEL,"1");
+
+      }
+      Serial.println(dhtManager.log());
+    //  if (smManager.newLog())   sfManager.addVariable(LOG_LABEL,smManager.log());
+//      if (hrManager.newLog())   sfManager.addVariable(LOG_LABEL,hrManager.log());
+    //  if (dhtManager.newLog())   sfManager.addVariable(LOG_LABEL,dhtManager.log());
+
+      //sfManager.sendKPIsToIO( smManager.m_privateKey, smManager.m_publicKey);
+
+    }
+    tickOccured = false;
+  }
