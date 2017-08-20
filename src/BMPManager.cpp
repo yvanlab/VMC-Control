@@ -11,7 +11,7 @@
 
 BMPManager::BMPManager(unsigned char SDA, unsigned char SCL,unsigned char pinLed)
   :Sodaq_BMP085() , BaseManager(pinLed) {
-    setStatus( true,"OK");
+    setStatus( true,"OK"); 
 }
 
 
