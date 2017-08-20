@@ -9,7 +9,7 @@
 
 VTSManager::VTSManager(uint8_t Relais1, uint8_t Relais2, uint8_t pinLed)
   :BaseManager(pinLed) {
-    setStatus(millis(), true,"OK");
+    setStatus( true,"OK");
     m_relais1 = Relais1;
     m_relais2 = Relais2;
     setVitesse(VTS_OFF);
@@ -28,6 +28,9 @@ void VTSManager::setVitesse(uint8_t vitesse) {
 
 }
 
-String VTSManager::toString() {
-  return "\"Vitesse\" : \""+String (m_vitesse) + "\"";
+String VTSManager::toString(boolean bJson = false) {
+  if (bJson)
+    return "\"Vitesse\" : \""+String (m_vitesse) + "\"";
+  else
+    return "Vitesse ["+String (m_vitesse) + "]";
 }

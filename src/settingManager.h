@@ -25,7 +25,7 @@ class SettingManager : public BaseManager
     char m_publicKey[64];
     float m_HUM_SEUIL; //float
     SettingManager(unsigned char pinLed);
-    String toString();
+    String toString(boolean bJson);
     unsigned char readData();
     unsigned char writeData();
     unsigned char clearData();

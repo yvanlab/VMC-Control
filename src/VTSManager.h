@@ -30,7 +30,7 @@ class VTSManager : public BaseManager
     void setVitesse(uint8_t vitesse);
     uint8_t getVitesse() {return m_vitesse;};
 
-    String toString();
+    String toString(boolean bJson);
 
     String getClassName(){return "VTSManager";}
 

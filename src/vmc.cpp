@@ -1,32 +1,4 @@
-/*
- * Copyright (c) 2015, Majenko Technologies
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * * Redistributions of source code must retain the above copyright notice, this
- *   list of conditions and the following disclaimer.
- *
- * * Redistributions in binary form must reproduce the above copyright notice, this
- *   list of conditions and the following disclaimer in the documentation and/or
- *   other materials provided with the distribution.
- *
- * * Neither the name of Majenko Technologies nor the names of its
- *   contributors may be used to endorse or promote products derived from
- *   this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+
 #include <Arduino.h>
 #ifdef esp32dev
 #include <wifi.h>
@@ -38,7 +10,7 @@
 #include <ArduinoJson.h>
 #include <ESP8266HTTPUpdateServer.h>
 //#include "ElectricManager.h"
-//#include "HourManager.h"
+#include "HourManager.h"
 //#include "SparkfunManager.h"
 #include "WifiManager.h"
 #include "SettingManager.h"
@@ -56,6 +28,10 @@
 #include <Adafruit_MQTT_Client.h>                           // Adafruit MQTT library
 #include <WiFiClient.h>
 
+#define MODULE_NAME VMC_METEO_NAME
+#define MODULE_MDNS VMC_METEO_MDNS
+#define MODULE_MDNS_AP VMC_METEO_MDNS_AP
+#define MODULE_IP   VMC_METEO_IP
 
 
 extern "C" {
@@ -72,7 +48,7 @@ extern "C" {
   #define PRESSION_EXT_LABEL "extPRESS"
   #define HUMIDITE_EXT_LABEL  "extHUM"
 
-  #define HIDDEN_KEY "*****"
+
 
 
 //#endif
@@ -88,33 +64,22 @@ extern "C" {
 #define  pin_EXT_EXT_DTH  D7
 
 
-const char* host = "esp8266-webupdate";
-const char* update_path = "/firmware";
-const char* update_username = "admin";
-const char* update_password = "admin";
-
 ESP8266WebServer server ( 80 );
 ESP8266HTTPUpdateServer httpUpdater;
 SettingManager smManager(pinLed);
-//HourManager hrManager(2390,pinLed);
+HourManager hrManager(2390,pinLed);
 WifiManager wfManager(pinLed);
 ioManager  sfManager(pinLed);
 DHTManager dhtVMC(pin_VMC_DHT,pinLed);
-BMPManager bmpEXT(D3,D4,pinLed);
+BMPManager bmpEXT(pin_EXT_BPM_SDA,pin_EXT_BPM_SCL,pinLed);
 DHTManager dhtEXT(pin_EXT_EXT_DTH,pinLed);
 VTSManager vtsVMC(pin_VMC_VITESSE,0,pinLed);
-//WiFiClient client;
 
 os_timer_t myTimer;
 boolean tickOccured;
-//EnergyMonitor emon1;
-
-const unsigned long timerFrequence = 2000;//60000;//ms
-//const unsigned long maxNbreMesure = 60000/timerFrequence; // send KPI every minute
-
-//unsigned long m_timeReference=0;
 
 
+const unsigned long timerFrequence = 60000;//ms
 
 
 /************ Global State (you don't need to change this!) ******************/
@@ -137,16 +102,59 @@ void timerrestartESP(void *pArg) {
 
 String getJson()
 {
-  String tt("{\"module\":{\"nom\":\"VMC-meteo\",");
-   tt += "\"version\":\"" + String("VERSION") + "\",";
-    tt += "\"date\":\"29/10/2017\"},\"VMC\":{";
-    tt += dhtVMC.toString() + "," + vtsVMC.toString();
-    tt += "},\"EXT\":{";
-    tt += /*bmpEXT.toString()*/ String("fakeee") + "," + dhtEXT.toString();
-    tt += "}}";
+  String tt("{\"module\":{");
+    tt += "\"nom\":\"" + String(MODULE_NAME) +"\"," ;
+    tt += "\"version\":\"" + String(VMC_VERSION) +"\"," ;
+    tt += "\"uptime\":\"" + NTP.getUptimeString() +"\"," ;
+    tt += "\"build_date\":\""+ String(__DATE__" " __TIME__)  +"\"},";
+    tt += "\"datetime\":{" + hrManager.toDTString(JSON_TEXT) + "},";
+
+    tt += "\"LOG\":["+wfManager.log(JSON_TEXT)  + "," + dhtVMC.log(JSON_TEXT)  + "," + dhtEXT.log(JSON_TEXT) + ","+ bmpEXT.log(JSON_TEXT) + "," + sfManager.log(JSON_TEXT) + "," + hrManager.log(JSON_TEXT)+"],";
+    tt += "\"VMC\":{"+dhtVMC.toString(JSON_TEXT) + "," + vtsVMC.toString(JSON_TEXT)+"},";
+    tt += "\"EXT\":{"+bmpEXT.toString(JSON_TEXT) + "," + dhtEXT.toString(JSON_TEXT)+"}}";
     return tt;
 }
 
+/*
+{
+  "module" : {
+    "nom":"blabla",
+    "version" : "1.0.2",
+    "date":"10/08/2017 18:15"
+  },
+"log" : [
+    {
+    "nom" : "class name",
+    "code" : "10",
+    "description" : "blabla"
+    },
+    {
+    "nom" : "class name",
+    "code" : "10",
+    "description" : "blabla"
+    }
+  ],
+  "VMC" : {
+    "dhtTemp" : "10.25",
+    "dhtHum"  : "40.25",
+    "Vitesse" : "0"
+  },
+  "EXT" : {
+    "bmpTemp" : "10.25",
+    "bmpPress"  : "40.25",
+    "dhtHum" : "41.70",
+    "dhtTemp" : "27.70"
+  }
+}
+
+*/
+
+void dataSummaryJson() {
+	digitalWrite ( pinLed, LOW );
+  server.send ( 200, "text/json", getJson() );
+  digitalWrite ( pinLed, HIGH );
+
+}
 void dataSummaryPage() {
 	digitalWrite ( pinLed, LOW );
   server.send ( 200, "text/json", getJson() );
@@ -228,28 +236,17 @@ void clearMemory(){
 }
 
 
-void setup ( void ) {
-  // Iniialise input
-  pinMode ( pinLed, OUTPUT );
-  //pinMode ( pin_VMC_VITESSE, INPUT );
-
-	Serial.begin ( 115200 );
-  Serial.println("6666 beforebgin");
-  //bmpEXT.begin(BMP085_ULTRAHIGHRES);
-
-  smManager.readData();
-  Serial.println(smManager.toString());
-  if (wfManager.connectSSID(smManager.m_ssid,smManager.m_password )==WL_CONNECTED) {
+void startWiFiserver() {
+  if (wfManager.connectSSID(smManager.m_ssid,smManager.m_password,IPAddress(MODULE_IP), MODULE_MDNS )==WL_CONNECTED) {
     os_timer_setfn(&myTimer, timerCallback, NULL);
     os_timer_arm(&myTimer, timerFrequence, true);
     server.on ( "/", dataSummaryPage );
     server.onNotFound ( dataSummaryPage );
+    hrManager.begin("pool.ntp.org", 1, true);
   } else {
     os_timer_setfn(&myTimer, timerrestartESP, NULL);
     os_timer_arm(&myTimer, 5*60*1000, true);
-    os_timer_setfn(&myTimer, timerCallback, NULL);
-    os_timer_arm(&myTimer, timerFrequence, true);
-    wfManager.connectAP();
+    wfManager.connectAP(MODULE_MDNS_AP);
     server.on ( "/", displayCredentialCollection );
     server.onNotFound ( displayCredentialCollection );
   }
@@ -257,47 +254,39 @@ void setup ( void ) {
   server.on ( "/restart", restartESP );
   server.on ( "/set", setCredential );
   server.on ( "/credential", displayCredentialCollection );
-  httpUpdater.setup(&server, update_path, update_username, update_password);
+  server.on ( "/status", dataSummaryJson );
+  httpUpdater.setup(&server, ((const char *)"/firmware"), MODULE_UPDATE_LOGIN, MODULE_UPDATE_PASS);
+
   server.begin();
-  Serial.println ( "HTTP server started" );
-  Serial.println(wfManager.toString());
+  Serial.println( "HTTP server started" );
+  Serial.println(wfManager.toString(STD_TEXT));
+}
 
 
-
-
-
-  //digitalWrite ( pin_VMC_VITESSE,0);
-
-
+void setup ( void ) {
+  // Iniialise input
+  Serial.begin ( 115200 );
+  smManager.readData();
+  DEBUGLOG("");DEBUGLOG(smManager.toString(STD_TEXT));
+  startWiFiserver();
 }
 
 
 void loop ( void ) {
-  /*delayMicroseconds(500000);
-  pinMode ( pin_VMC_VITESSE, INPUT );
-  digitalWrite(pin_VMC_VITESSE, 1); //On écrit l'état du relais
-  sfManager.switchOn();
-  delayMicroseconds(500000);
-  pinMode ( pin_VMC_VITESSE, OUTPUT );
-  digitalWrite(pin_VMC_VITESSE, 0);
-  sfManager.switchOff();*/
+
 	server.handleClient();
   //WiFiClient client = server.available();
   if (tickOccured) {
 
-    Serial.print ("debug mode : ");
-    Serial.println (millis());
 
-/*
-  #ifdef MCPOC_TEST
-      //Serial.println (ESP_PLATFORM );
-      Serial.println ("debug mode");
-      Serial.println (dhtVMC.toString());
-      Serial.println (vtsVMC.toString());
-      Serial.println (bmpEXT.toString());
-      Serial.println (dhtEXT.toString());
-      Serial.println (getJson());
-  #endif
+      //DEBUGLOG(ESP_PLATFORM );
+      DEBUGLOG("debug mode");
+      DEBUGLOG(dhtVMC.toString(STD_TEXT));
+      DEBUGLOG(vtsVMC.toString(STD_TEXT));
+      DEBUGLOG(bmpEXT.toString(STD_TEXT));
+      DEBUGLOG(dhtEXT.toString(STD_TEXT));
+      DEBUGLOG(getJson());
+
 
       sfManager.addVariable(HUMIDITE_VMC_LABEL, String(dhtVMC.getHumidity()));
       sfManager.addVariable(TEMPERATURE_VMC_LABEL, String(dhtVMC.getTemperature()));
@@ -316,14 +305,13 @@ void loop ( void ) {
         sfManager.addVariable(VITESSE_VMC_LABEL,String(VTS_OFF));
 
       }
-      //Serial.println(dhtManager.log());
+      //DEBUGLOG(dhtManager.log());
     //  if (smManager.newLog())   sfManager.addVariable(LOG_LABEL,smManager.log());
 //      if (hrManager.newLog())   sfManager.addVariable(LOG_LABEL,hrManager.log());
     //  if (dhtManager.newLog())   sfManager.addVariable(LOG_LABEL,dhtManager.log());
 
       sfManager.sendKPIsToIO( smManager.m_privateKey, smManager.m_publicKey);
 
-*/
     tickOccured = false;
   }
 

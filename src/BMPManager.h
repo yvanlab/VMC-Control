@@ -23,18 +23,10 @@ class BMPManager : public Sodaq_BMP085, public BaseManager
   public:
     BMPManager(unsigned char SDA, unsigned char SCL,unsigned char pinLed);
 
-    String toString();
-
-    /*float getTemperature();
-    int32_t getPressure();*/
+    String toString(boolean bJson);
     String getClassName(){return "BMPManager";}
-
-  private:
-    //int32_t   m_pressure;
-    //float     m_temperature;
-    //uint8_t m_pinDHT;
-    //int8_t read();
-
+    /*float readTemperature(void);
+    int32_t readPressure(void);*/
 };
 
 #endif

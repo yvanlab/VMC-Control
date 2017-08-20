@@ -11,29 +11,29 @@
 
 BMPManager::BMPManager(unsigned char SDA, unsigned char SCL,unsigned char pinLed)
   :Sodaq_BMP085() , BaseManager(pinLed) {
-    setStatus(millis(), true,"OK");
+    setStatus( true,"OK");
 }
 
 
-String BMPManager::toString() {
-  //Serial.println("toString");
-  //String mesure = "Temperature["+String (readTemperature()) + "] - Pressure[" + String(readPressure())+"]";
-  String mesure = "\"bmpTemp\" : \""+String (readTemperature()) + "\", \"bmpPress\" : \"" + String(readPressure())+"\"";
-  return mesure;
+String BMPManager::toString(boolean bJson = STD_TEXT) {
+    if (bJson==JSON_TEXT)
+    return "\"bmpTemp\" : \""+String (readTemperature()) + "\", \"bmpPress\" : \"" + String(readPressure())+"\"";
+  else
+    return "Temperature["+String (readTemperature()) + "] - Pressure[" + String(readPressure())+"]";
 }
-
-/*float BMPManager::getTemperature() {
+/*
+float BMPManager::readTemperature() {
   switchOn();
-  m_temperature = readTemperature();
-  setStatus(millis(), true,"OK");
+  //m_temperature = readTemperature();
+  setStatus( true,"OK");
   switchOff();
-  return m_temperature;
+  return 12.34;
 }
 
-int32_t BMPManager::getPressure(){
+int32_t BMPManager::readPressure(){
   switchOn();
-  m_pressure = readPressure();
-  setStatus(millis(), true,"OK");
+  //m_pressure = readPressure();
+  setStatus( true,"OK");
   switchOff();
-  return m_pressure;
+  return 1234567;
 }*/
