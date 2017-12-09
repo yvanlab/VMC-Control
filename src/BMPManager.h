@@ -16,6 +16,11 @@
 #include <Sodaq_BMP085.h>
 #include "BaseManager.h"
 
+#define BPM_TEMPS_BEAU     1 //:   > 1020               :  Beau ou assez beau. Journées chaudes, nuits fraîches.
+#define BPM_TEMPS_ORAGEUX  2 //: De 1013 à 1020 hPa	  :  Assez beau ou ondées orageuses. Journées chaudes, nuits un peu fraîches.
+#define BPM_TEMPS_PLUIE    3 //: De 1006 à 1013 hPa   :	 Pluie ou averses avec un peu de vent. Temps doux.
+#define BPM_TEMPS_TEMPETE  4 //:  < 1006 hPa	          :  Pluie et vent assez fort. Températures douces.
+
 
 class BMPManager : public Sodaq_BMP085, public BaseManager
 {
@@ -25,8 +30,13 @@ class BMPManager : public Sodaq_BMP085, public BaseManager
 
     String toString(boolean bJson);
     String getClassName(){return "BMPManager";}
-    /*float readTemperature(void);
-    int32_t readPressure(void);*/
+    //#if defined(MCPOC_MOCK)
+    float readTemperature(void);
+    int32_t readPressure(void);
+    //#endif
+
+    capteurValue  m_Pression;
+    capteurValue  m_Temperature;
 };
 
 #endif

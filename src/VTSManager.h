@@ -19,7 +19,7 @@
 #define VTS_OFF 0
 #define VTS_LOW 1
 #define VTS_HIGH 2
-
+#define MAX_TIME_VTS_FORCED 60*2*1000// 60*60*1000 //1 heure
 
 class VTSManager : public BaseManager
 {
@@ -27,7 +27,8 @@ class VTSManager : public BaseManager
   public:
     VTSManager(uint8_t Relais1, uint8_t Relais2, uint8_t pinLed);
 
-    void setVitesse(uint8_t vitesse);
+    void setVitesse(uint8_t vitesse, bool bForce = false);
+    void setVitesse(capteurValue vmc, capteurValue ext, float seuil);
     uint8_t getVitesse() {return m_vitesse;};
 
     String toString(boolean bJson);
@@ -38,6 +39,7 @@ class VTSManager : public BaseManager
     uint8_t m_vitesse;
     uint8_t m_relais1;
     uint8_t m_relais2;
+    uint32_t m_lastForcedVitesse;
 
 };
 
