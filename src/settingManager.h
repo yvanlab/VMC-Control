@@ -20,14 +20,18 @@
 class SettingManager : public BaseSettingManager
 {
   public:
-    float m_HUM_SEUIL; //float
+    uint8_t m_HUM_SEUIL; //float
+    uint8_t m_duration;
+    uint8_t m_hourStart;
+    uint8_t m_hourStop;
     SettingManager(unsigned char pinLed);
-    String toString(boolean bJson);
+
     unsigned char readData();
     unsigned char writeData();
     String getClassName(){return "SettingManager";}
+    String toString(boolean bJson);
   private:
-    
+
 };
 
 #endif

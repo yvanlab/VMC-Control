@@ -34,6 +34,8 @@ class BMPManager : public Sodaq_BMP085, public BaseManager
     float readTemperature(void);
     int32_t readPressure(void);
     //#endif
+    float getLastTemperature(){return m_Temperature.m_value;};
+    int32_t getLastPressure(){return m_Pression.m_value;};
 
     capteurValue  m_Pression;
     capteurValue  m_Temperature;

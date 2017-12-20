@@ -30,13 +30,13 @@ uint8_t getWeatherTrend(float fPression) {
 
 String BMPManager::toString(boolean bJson = STD_TEXT) {
     if (bJson==JSON_TEXT)
-    return "\"bmpTemp\" : \""+String (readTemperature()) +
+    return "\"bmpTemp\" : \""+String (getLastTemperature()) +
         "\", \"bmpTempTrend\" : \"" + String(m_Temperature.m_trend)+
         "\", \"bmpPressTrend\" : \"" + String(m_Pression.m_trend)+
-        "\", \"bmpWeatherForcast\" : \"" + String( getWeatherTrend(m_Pression.m_value))+
-        "\", \"bmpPress\" : \"" + String(readPressure())+"\"";
+        "\", \"bmpWeatherForcast\" : \"" + String(getWeatherTrend(getLastPressure()))+
+        "\", \"bmpPress\" : \"" + String(getLastPressure())+"\"";
   else
-    return "Temperature["+String (readTemperature()) + "]["+String(m_Temperature.m_trend)+"] - Pressure[" + String(readPressure())+ "]["+String(m_Pression.m_trend)+"]";
+    return "Temperature["+String (getLastTemperature()) + "]["+String(m_Temperature.m_trend)+"] - Pressure[" + String(getLastPressure())+ "]["+String(m_Pression.m_trend)+"]";
 }
 
 

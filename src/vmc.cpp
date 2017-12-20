@@ -59,13 +59,16 @@ extern "C" {
 
 #define  pinLed           D8 //D4
 #define  pin_VMC_DHT      D2
-#define  pin_VMC_VITESSE_R1  D1 //D6 //8
-#define  pin_VMC_VITESSE_R2  D6 //D1
+#define  pin_VMC_VITESSE_R1  D6 //D1 //D6 //8
+#define  pin_VMC_VITESSE_R2  D1 //D6 //D1
 
 #define  pin_EXT_BPM_SDA  D3
 #define  pin_EXT_BPM_SCL  D4
 
 #define  pin_EXT_EXT_DTH  D7
+
+#define  pin_PRESENCE  A0
+
 
 
 SettingManager          smManager(pinLed);
@@ -74,7 +77,7 @@ ioManager               sfManager(pinLed);
 DHTManager              dhtVMC(pin_VMC_DHT,pinLed);
 BMPManager              bmpEXT(pin_EXT_BPM_SDA,pin_EXT_BPM_SCL,pinLed);
 DHTManager              dhtEXT(pin_EXT_EXT_DTH,pinLed);
-VTSManager              vtsVMC(pin_VMC_VITESSE_R1,pin_VMC_VITESSE_R2,pinLed);
+VTSManager              vtsVMC(pin_VMC_VITESSE_R1,pin_VMC_VITESSE_R2,&smManager,pinLed);
 
 //extern MyTimer         mtTimer;
 
@@ -85,15 +88,25 @@ RemoteDebug             Debug;
 #ifdef MCPOC_TELNET // Not in PRODUCTION
 void processCmdRemoteDebug() {
     String lastCmd = Debug.getLastCommand();
-    if (lastCmd == "v0") {
-      vtsVMC.setVitesse(VTS_OFF,true);
-    } else if (lastCmd == "v1") {
-      vtsVMC.setVitesse(VTS_LOW,true);
-    } else if (lastCmd == "v2") {
-      vtsVMC.setVitesse(VTS_HIGH,true);
-    } else if (lastCmd == "restart") {
+    String minute,cmd;
+    int8_t index = lastCmd.indexOf(',');
+    if (index > 0) {
+        cmd  = lastCmd.substring(0, index);
+        minute = lastCmd.substring(index+1);
+    } else {
+        cmd = lastCmd;
+        minute = "1";
+    }
+    uint8_t duration = atoi(minute.c_str());
+    if (cmd == "v0") {
+      vtsVMC.setVitesse(VTS_OFF,duration);
+    } else if (cmd == "v1") {
+      vtsVMC.setVitesse(VTS_LOW,duration);
+    } else if (cmd == "v2") {
+      vtsVMC.setVitesse(VTS_HIGH,duration);
+    } else if (cmd == "restart") {
         ESP.restart();
-    } else if (lastCmd == "reset") {
+    } else if (cmd == "reset") {
       WiFi.disconnect();
     }
 }
@@ -108,8 +121,14 @@ String getJson()
     tt += "\"uptime\":\"" +  wfManager.getHourManager()->toUTString() +"\"," ;
     tt += "\"build_date\":\""+ String(__DATE__" " __TIME__)  +"\"},";
     tt += "\"datetime\":{" + wfManager.getHourManager()->toDTString(JSON_TEXT) + "},";
-
-    tt += "\"LOG\":["+wfManager.log(JSON_TEXT)  + "," + dhtVMC.log(JSON_TEXT)  + "," + dhtEXT.log(JSON_TEXT) + ","+ bmpEXT.log(JSON_TEXT) + "," + sfManager.log(JSON_TEXT) + "," +  wfManager.getHourManager()->log(JSON_TEXT)+"],";
+    tt += "\"setting\":{" + smManager.toString(JSON_TEXT)  + "},";
+    tt += "\"LOG\":["+wfManager.log(JSON_TEXT)  + "," +
+                      dhtVMC.log(JSON_TEXT)  + "," +
+                      dhtEXT.log(JSON_TEXT) + "," +
+                      bmpEXT.log(JSON_TEXT) + "," +
+                      sfManager.log(JSON_TEXT) + "," +
+                      smManager.log(JSON_TEXT) + "," +
+                      wfManager.getHourManager()->log(JSON_TEXT)+"],";
     tt += "\"VMC\":{"+dhtVMC.toString(JSON_TEXT) + "," + vtsVMC.toString(JSON_TEXT)+"},";
     tt += "\"EXT\":{"+bmpEXT.toString(JSON_TEXT) + "," + dhtEXT.toString(JSON_TEXT)+"}}";
     return tt;
@@ -177,7 +196,11 @@ void displayData() {
     <body>";
 
   message += "<form method='get' action='setData'>";
-  message += "<label>Hum. Seuil:</label><input name='humSeuil' length=64 value=\""+String(smManager.m_HUM_SEUIL) +"\"><br>";
+  message += "<label>Hum. Seuil:</label><input name='humSeuil' length=2 value=\""+String(smManager.m_HUM_SEUIL) +"\">";
+  message += "<label>Duree:</label><input name='duration' length=2 value=\""+String(smManager.m_duration) +"\"><br>";
+  message += "<label>Heure depart:</label><input name='start' length=2 value=\""+String(smManager.m_hourStart) +"\">";
+  message += "<label>Heure stop:</label><input name='stop' length=2 value=\""+String(smManager.m_hourStop) +"\"><br>";
+
   message += "<label>Vitesse:</label><input name='vts' length=64 value=\""+String(vtsVMC.getVitesse()) +"\"><br>";
 
 
@@ -192,16 +215,38 @@ void displayData() {
 }
 
 void setData(){
+  bool bWriteData = false;
   String str = wfManager.getServer()->arg("humSeuil");
   if (str.length()>0) {
     smManager.m_HUM_SEUIL = atof(str.c_str());
-    smManager.writeData();
+    bWriteData = true;
   }
+  str = wfManager.getServer()->arg("duration");
+  if (str.length()>0) {
+    smManager.m_duration = atoi(str.c_str());
+    bWriteData = true;
+  }
+
+  str = wfManager.getServer()->arg("start");
+  if (str.length()>0) {
+    smManager.m_hourStart = atoi(str.c_str());
+    bWriteData = true;
+  }
+
+  str = wfManager.getServer()->arg("stop");
+  if (str.length()>0) {
+    smManager.m_hourStop = atoi(str.c_str());
+    bWriteData = true;
+  }
+
+
   str = wfManager.getServer()->arg("vts");
   if (str.length()>0) {
     vtsVMC.setVitesse(atoi(str.c_str()), true);
   }
 
+  if (bWriteData)
+    smManager.writeData();
 
   wfManager.getServer()->send ( 200, "text/html", "data recorded");
 }
@@ -241,9 +286,11 @@ void setup ( void ) {
 
   mtTimer.begin(timerFrequence);
   mtTimer.setCustomMS(10000);
+
+  //pinMode(pin_PRESENCE, INPUT_PULLDOWN_16 );
 }
 
-
+int j = 0 ;
 void loop ( void ) {
 
 	wfManager.handleClient();
@@ -261,17 +308,16 @@ void loop ( void ) {
       DEBUGLOG(getJson());
 
 
-      sfManager.addVariable(HUMIDITE_VMC_LABEL, String(dhtVMC.getHumidity()));
-      sfManager.addVariable(TEMPERATURE_VMC_LABEL, String(dhtVMC.getTemperature()));
-      sfManager.addVariable(PRESSION_EXT_LABEL, String(bmpEXT.readPressure()));
-      sfManager.addVariable(TEMPERATURE_EXT_LABEL, String(bmpEXT.readTemperature()));
-      sfManager.addVariable(HUMIDITE_EXT_LABEL, String(dhtEXT.getHumidity()));
+      sfManager.addVariable(HUMIDITE_VMC_LABEL    , String(dhtVMC.getHumidity()));
+      sfManager.addVariable(TEMPERATURE_VMC_LABEL , String(dhtVMC.getTemperature()));
+      sfManager.addVariable(PRESSION_EXT_LABEL    , String(bmpEXT.readPressure()));
+      sfManager.addVariable(TEMPERATURE_EXT_LABEL , String(bmpEXT.readTemperature()));
+      sfManager.addVariable(HUMIDITE_EXT_LABEL    , String(dhtEXT.getHumidity()));
       sfManager.addVariable(TEMPERATUR_EXT_DHT_LABEL, String(dhtEXT.getTemperature()));
+      sfManager.addVariable("vmcHUMtrend"         , String(dhtVMC.getHumidityTrend()));
 
-
-      vtsVMC.setVitesse(dhtVMC.m_Humidity , dhtEXT.m_Humidity , smManager.m_HUM_SEUIL);
-      sfManager.addVariable(VITESSE_VMC_LABEL,String(vtsVMC.getVitesse()));
-
+      vtsVMC.setVitesse(dhtVMC.m_Humidity , dhtEXT.m_Humidity);
+      sfManager.addVariable(VITESSE_VMC_LABEL     ,String(vtsVMC.getVitesse()));
       sfManager.sendKPIsToIO( smManager.m_privateKey, smManager.m_publicKey);
     }
 
@@ -280,6 +326,13 @@ void loop ( void ) {
         ESP.restart();
       }
     }
+
+
+    /*if (mtTimer.is1SPeriod()) {
+
+      Serial.print(j++);Serial.print("-");
+      Serial.println(analogRead(pin_PRESENCE));
+    }*/
 
     mtTimer.clearPeriod();
 
