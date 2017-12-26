@@ -294,7 +294,14 @@ int j = 0 ;
 void loop ( void ) {
 
 	wfManager.handleClient();
-
+  if (mtTimer.isCustomPeriod()) {
+    dhtVMC.mesureHumidity();
+    dhtVMC.mesureTemperature();
+    bmpEXT.mesurePressure();
+    bmpEXT.mesureTemperature();
+    dhtEXT.mesureHumidity();
+    dhtEXT.mesureTemperature();
+  }
   /*if (mtTimer.is250MSPeriod())
     DEBUGLOG("debug mode");*/
   //WiFiClient client = server.available();
@@ -310,8 +317,8 @@ void loop ( void ) {
 
       sfManager.addVariable(HUMIDITE_VMC_LABEL    , String(dhtVMC.getHumidity()));
       sfManager.addVariable(TEMPERATURE_VMC_LABEL , String(dhtVMC.getTemperature()));
-      sfManager.addVariable(PRESSION_EXT_LABEL    , String(bmpEXT.readPressure()));
-      sfManager.addVariable(TEMPERATURE_EXT_LABEL , String(bmpEXT.readTemperature()));
+      sfManager.addVariable(PRESSION_EXT_LABEL    , String(bmpEXT.getPressure()));
+      sfManager.addVariable(TEMPERATURE_EXT_LABEL , String(bmpEXT.getTemperature()));
       sfManager.addVariable(HUMIDITE_EXT_LABEL    , String(dhtEXT.getHumidity()));
       sfManager.addVariable(TEMPERATUR_EXT_DHT_LABEL, String(dhtEXT.getTemperature()));
       sfManager.addVariable("vmcHUMtrend"         , String(dhtVMC.getHumidityTrend()));

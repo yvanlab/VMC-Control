@@ -40,7 +40,7 @@ String BMPManager::toString(boolean bJson = STD_TEXT) {
 }
 
 
-float BMPManager::readTemperature() {
+float BMPManager::mesureTemperature() {
   switchOn();
   float temp;
   #if defined(MCPOC_MOCK)
@@ -50,13 +50,19 @@ float BMPManager::readTemperature() {
   temp = Sodaq_BMP085::readTemperature();
   setStatus( true,"OK");
   #endif
-  m_Temperature.set(temp);
+  m_Temperature.mesure(temp);
 
   switchOff();
   return temp;
 }
 
-int32_t BMPManager::readPressure(){
+float BMPManager::getTemperature() {
+  if (m_Temperature.m_nbreMeasure == 0) mesureTemperature();
+  m_Temperature.set();
+  return m_Temperature.m_value;
+}
+
+int32_t BMPManager::mesurePressure(){
   switchOn();
   float pressure;
   #if defined(MCPOC_MOCK)
@@ -66,8 +72,14 @@ int32_t BMPManager::readPressure(){
   pressure = Sodaq_BMP085::readPressure();
   setStatus( true,"OK");
   #endif
-  m_Pression.set(pressure);
+  m_Pression.mesure(pressure);
 
   switchOff();
   return pressure;
+}
+
+int32_t BMPManager::getPressure() {
+  if (m_Pression.m_nbreMeasure == 0) mesurePressure();
+  m_Pression.set();
+  return m_Pression.m_value;
 }

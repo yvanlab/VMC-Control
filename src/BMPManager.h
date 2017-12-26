@@ -30,9 +30,11 @@ class BMPManager : public Sodaq_BMP085, public BaseManager
 
     String toString(boolean bJson);
     String getClassName(){return "BMPManager";}
-    //#if defined(MCPOC_MOCK)
-    float readTemperature(void);
-    int32_t readPressure(void);
+
+    int32_t mesurePressure(void);
+    float   mesureTemperature(void);
+    float   getTemperature(void);
+    int32_t getPressure(void);
     //#endif
     float getLastTemperature(){return m_Temperature.m_value;};
     int32_t getLastPressure(){return m_Pression.m_value;};

@@ -28,7 +28,8 @@ void  VTSManager::setVitesse(capteurValue vmc, capteurValue ext) {
       uint8_t vitesse = VTS_OFF;
       if (hour()>=m_sm->m_hourStart && hour()<m_sm->m_hourStop)
         vitesse = VTS_LOW;
-        vitesse = VTS_OFF;
+
+      //  vitesse = VTS_OFF;
 
       if (vmc.m_trend > m_sm->m_HUM_SEUIL) {
         vitesse = VTS_HIGH;

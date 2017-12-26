@@ -26,43 +26,28 @@ unsigned char SettingManager::readData(){
   BaseSettingManager::readData();
   switchOn();
   char tmp[8];
-  readEEPROM(tmp,4);
-  //Serial.print("m_duration");Serial.print(":");DEBUGLOG(tmp);
-  m_duration = atoi(tmp);
+
+  m_duration = readEEPROM();
   //Serial.print("m_duration");Serial.print(":");DEBUGLOG(m_duration);
-  readEEPROM(tmp,4);
-  //Serial.print("m_HUM_SEUIL-Read");Serial.print(":");DEBUGLOG(tmp);
-  m_HUM_SEUIL = atoi(tmp);
-  //Serial.print("m_HUM_SEUIL");Serial.print(":");DEBUGLOG(m_HUM_SEUIL);
-  readEEPROM(tmp,4);
-  //Serial.print("m_HUM_SEUIL-Read");Serial.print(":");DEBUGLOG(tmp);
-  m_hourStart = atoi(tmp);
-  readEEPROM(tmp,4);
-  //Serial.print("m_HUM_SEUIL-Read");Serial.print(":");DEBUGLOG(tmp);
-  m_hourStop = atoi(tmp);
+  m_HUM_SEUIL = readEEPROM();
+  if (m_version != EEPROM_VERSION) {
+    m_hourStart = 7;
+    m_hourStop  = 18;
+  } else {
+    m_hourStart = readEEPROM();
+    m_hourStop = readEEPROM();
+  }
 
   switchOff();
 }
 unsigned char SettingManager::writeData(){
   BaseSettingManager::writeData();
   switchOn();
-  char tmp[8];
 
-  itoa(m_duration,tmp,10);
-  //Serial.print("WWm_duration");Serial.print(":");DEBUGLOG(tmp);
-  writeEEPROM(tmp);
-
-  itoa(m_HUM_SEUIL,tmp,10);
-  //Serial.print("m_HUM_SEUIL");Serial.print(":");DEBUGLOG(tmp);
-  writeEEPROM(tmp);
-
-  itoa(m_hourStart,tmp,10);
-  //Serial.print("m_HUM_SEUIL");Serial.print(":");DEBUGLOG(tmp);
-  writeEEPROM(tmp);
-
-  itoa(m_hourStop,tmp,10);
-  //Serial.print("m_HUM_SEUIL");Serial.print(":");DEBUGLOG(tmp);
-  writeEEPROM(tmp);
+  writeEEPROM(m_duration);
+  writeEEPROM(m_HUM_SEUIL);
+  writeEEPROM(m_hourStart);
+  writeEEPROM(m_hourStop);
 
 
   EEPROM.commit();
