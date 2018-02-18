@@ -12,13 +12,16 @@
 //#include <ArduinoJson.h>
 //#include <ESP8266HTTPUpdateServer.h>
 //#include "ElectricManager.h"
-#include "HourManager.h"
+#include <HourManager.h>
 //#include "SparkfunManager.h"
-#include "WifiManagerV2.h"
+//#include "ioManager.h"
+#include <thingSpeakManager.h>
+#include <WifiManagerV2.h>
 #include "SettingManager.h"
-#include "ioManager.h"
-#include "DHTManager.h"
+
+#include <DHTManagerV2.h>
 #include "BMPManager.h"
+#include "BMPManagerV2.h"
 #include "VTSManager.h"
 #include <myTimer.h>
 
@@ -43,13 +46,18 @@ extern "C" {
 */
 
   #define LOG_LABEL  "log"
-  #define HUMIDITE_VMC_LABEL  "vmcHUM"
-  #define TEMPERATURE_VMC_LABEL "vmcTEMP"
-  #define VITESSE_VMC_LABEL "vmcVTS"
-  #define TEMPERATURE_EXT_LABEL "extTEMP"
-  #define TEMPERATUR_EXT_DHT_LABEL "extdhtTEMP"
-  #define PRESSION_EXT_LABEL "extPRESS"
-  #define HUMIDITE_EXT_LABEL  "extHUM"
+  #define HUMIDITE_VMC_LABEL        1 //"vmcHUM"
+  #define TEMPERATURE_VMC_LABEL     2 //"vmcTEMP"
+  #define VITESSE_VMC_LABEL         3 //"vmcVTS"
+  #define TEMPERATURE_EXT_LABEL     4 //"extTEMP"
+  #define HUMIDITE_EXT_LABEL        5 //"extHUM"
+  #define PRESSION_EXT_LABEL        6 //"extPRESS"
+
+  #define HUMIDITE_TREND_VMC_LABEL  7 //"vmcHUM"
+
+  #define TEMPERATUR_EXT_DHT_LABEL  8 //"extdhtTEMP"
+
+
 
 
 
@@ -73,10 +81,11 @@ extern "C" {
 
 SettingManager          smManager(pinLed);
 WifiManager             wfManager(pinLed,&smManager);
-ioManager               sfManager(pinLed);
-DHTManager              dhtVMC(pin_VMC_DHT,pinLed);
-BMPManager              bmpEXT(pin_EXT_BPM_SDA,pin_EXT_BPM_SCL,pinLed);
-DHTManager              dhtEXT(pin_EXT_EXT_DTH,pinLed);
+thingSpeakManager       sfManager(pinLed);
+DHTManagerV2            dhtVMC(pinLed,pin_VMC_DHT);
+//BMPManager              bmpEXT(pin_EXT_BPM_SDA,pin_EXT_BPM_SCL,pinLed);
+BMPManagerV2            bmpEXTV2(pinLed);
+DHTManagerV2            dhtEXT(pinLed,pin_EXT_EXT_DTH);
 VTSManager              vtsVMC(pin_VMC_VITESSE_R1,pin_VMC_VITESSE_R2,&smManager,pinLed);
 
 //extern MyTimer         mtTimer;
@@ -119,18 +128,19 @@ String getJson()
     tt += "\"nom\":\"" + String(MODULE_NAME) +"\"," ;
     tt += "\"version\":\"" + String(MODULE_VERSION) +"\"," ;
     tt += "\"uptime\":\"" +  wfManager.getHourManager()->toUTString() +"\"," ;
+    tt += "\"status\":\"" + String(STATUS_PERIPHERIC_WORKING) +"\"," ;
     tt += "\"build_date\":\""+ String(__DATE__" " __TIME__)  +"\"},";
     tt += "\"datetime\":{" + wfManager.getHourManager()->toDTString(JSON_TEXT) + "},";
     tt += "\"setting\":{" + smManager.toString(JSON_TEXT)  + "},";
     tt += "\"LOG\":["+wfManager.log(JSON_TEXT)  + "," +
                       dhtVMC.log(JSON_TEXT)  + "," +
                       dhtEXT.log(JSON_TEXT) + "," +
-                      bmpEXT.log(JSON_TEXT) + "," +
+                      bmpEXTV2.log(JSON_TEXT) + "," +
                       sfManager.log(JSON_TEXT) + "," +
                       smManager.log(JSON_TEXT) + "," +
                       wfManager.getHourManager()->log(JSON_TEXT)+"],";
     tt += "\"VMC\":{"+dhtVMC.toString(JSON_TEXT) + "," + vtsVMC.toString(JSON_TEXT)+"},";
-    tt += "\"EXT\":{"+bmpEXT.toString(JSON_TEXT) + "," + dhtEXT.toString(JSON_TEXT)+"}}";
+    tt += "\"EXT\":{" + bmpEXTV2.toString(JSON_TEXT) + "," + dhtEXT.toString(JSON_TEXT)+"}}";
     return tt;
 }
 
@@ -295,12 +305,14 @@ void loop ( void ) {
 
 	wfManager.handleClient();
   if (mtTimer.isCustomPeriod()) {
-    dhtVMC.mesureHumidity();
-    dhtVMC.mesureTemperature();
-    bmpEXT.mesurePressure();
-    bmpEXT.mesureTemperature();
-    dhtEXT.mesureHumidity();
-    dhtEXT.mesureTemperature();
+
+    dhtVMC.mesure();
+    //dhtVMC.mesureTemperature();
+    //bmpEXT.mesurePressure();
+    //bmpEXT.mesureTemperature();
+    dhtEXT.mesure();
+    bmpEXTV2.mesure();
+    //dhtEXT.mesureTemperature();
   }
   /*if (mtTimer.is250MSPeriod())
     DEBUGLOG("debug mode");*/
@@ -310,25 +322,33 @@ void loop ( void ) {
       DEBUGLOG("debug mode");
       DEBUGLOG(dhtVMC.toString(STD_TEXT));
       DEBUGLOG(vtsVMC.toString(STD_TEXT));
-      DEBUGLOG(bmpEXT.toString(STD_TEXT));
+      //DEBUGLOG(bmpEXT.toString(STD_TEXT));
+      DEBUGLOG(bmpEXTV2.toString(STD_TEXT));
       DEBUGLOG(dhtEXT.toString(STD_TEXT));
       DEBUGLOG(getJson());
 
 
-      sfManager.addVariable(HUMIDITE_VMC_LABEL    , String(dhtVMC.getHumidity()));
-      sfManager.addVariable(TEMPERATURE_VMC_LABEL , String(dhtVMC.getTemperature()));
-      sfManager.addVariable(PRESSION_EXT_LABEL    , String(bmpEXT.getPressure()));
-      sfManager.addVariable(TEMPERATURE_EXT_LABEL , String(bmpEXT.getTemperature()));
-      sfManager.addVariable(HUMIDITE_EXT_LABEL    , String(dhtEXT.getHumidity()));
-      sfManager.addVariable(TEMPERATUR_EXT_DHT_LABEL, String(dhtEXT.getTemperature()));
-      sfManager.addVariable("vmcHUMtrend"         , String(dhtVMC.getHumidityTrend()));
+      sfManager.addVariable(HUMIDITE_VMC_LABEL      , String(dhtVMC.getHumiditySensor()->getValue()));
+      sfManager.addVariable(TEMPERATURE_VMC_LABEL   , String(dhtVMC.getTemperatureSensor()->getValue()));
+      sfManager.addVariable(PRESSION_EXT_LABEL      , String(bmpEXTV2.getPressionSensor()->getValue()));
+      sfManager.addVariable(TEMPERATURE_EXT_LABEL   , String(bmpEXTV2.getTemperatureSensor()->getValue()));
+      sfManager.addVariable(HUMIDITE_EXT_LABEL      , String(dhtEXT.getHumiditySensor()->getValue()));
+      sfManager.addVariable(TEMPERATUR_EXT_DHT_LABEL, String(dhtEXT.getTemperatureSensor()->getValue()));
+      sfManager.addVariable(HUMIDITE_TREND_VMC_LABEL, String(dhtVMC.getHumiditySensor()->getTrend()));
 
       vtsVMC.setVitesse(dhtVMC.m_Humidity , dhtEXT.m_Humidity);
       sfManager.addVariable(VITESSE_VMC_LABEL     ,String(vtsVMC.getVitesse()));
-      sfManager.sendKPIsToIO( smManager.m_privateKey, smManager.m_publicKey);
+      sfManager.sendIoT( smManager.m_privateKey, smManager.m_publicKey);
     }
 
     if (mtTimer.is5MNPeriod()) {
+      if (wfManager.getHourManager()->isNextDay()) {
+        // clear max/min
+        dhtVMC.clear();
+        dhtEXT.clear();
+        bmpEXTV2.clear();
+      }
+
       if (!WiFi.isConnected()) {
         ESP.restart();
       }

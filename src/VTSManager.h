@@ -14,8 +14,10 @@
 #endif
 /*#include <Wire.h>
 #include <Sodaq_BMP085.h>*/
-#include "BaseManager.h"
-#include "SettingManager.h"
+#include <BaseManager.h>
+#include <SettingManager.h>
+#include <DHTHumidity.h>
+
 
 #define VTS_OFF 0
 #define VTS_LOW 1
@@ -29,8 +31,8 @@ class VTSManager : public BaseManager
     VTSManager(uint8_t Relais1, uint8_t Relais2, SettingManager *sm, uint8_t pinLed);
 
     void setVitesse(uint8_t vitesse, uint8_t duration = 0 );
-    void setVitesse(capteurValue vmc, capteurValue ext, uint8_t seuil, uint8_t maxDuration);
-    void setVitesse(capteurValue vmc, capteurValue ext);
+    //void setVitesse(capteurValue vmc, capteurValue ext, uint8_t seuil, uint8_t maxDuration);
+    void setVitesse(DHTHumidity vmc, DHTHumidity ext);
     uint8_t getVitesse() {return m_vitesse;};
 
     String toString(boolean bJson);
@@ -38,11 +40,11 @@ class VTSManager : public BaseManager
     String getClassName(){return "VTSManager";}
 
   private:
-    uint8_t m_vitesse;
+    uint8_t m_vitesse = VTS_OFF;
     uint8_t m_relais1;
     uint8_t m_relais2;
-    uint32_t m_lastForcedVitesse;
-    uint32_t m_forcedDurationVitesse;
+    uint32_t m_lastForcedVitesse = 0;
+    uint32_t m_forcedDurationVitesse = 0;
     SettingManager *m_sm;
 
 };

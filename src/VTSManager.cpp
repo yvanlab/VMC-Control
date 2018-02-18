@@ -19,64 +19,38 @@ VTSManager::VTSManager(uint8_t Relais1, uint8_t Relais2, SettingManager *sm, uin
     //m_vitesse = VTS_OFF;
 }
 
-void  VTSManager::setVitesse(capteurValue vmc, capteurValue ext) {
+void  VTSManager::setVitesse(DHTHumidity vmc, DHTHumidity ext) {
       if (m_lastForcedVitesse!=0 && (millis() -m_lastForcedVitesse ) < m_forcedDurationVitesse) {
         DEBUGLOGF("Not calculated : %d\n",m_vitesse);
         return;
       }
       uint8_t calculatedDuration = 0;
       uint8_t vitesse = VTS_OFF;
-      if (hour()>=m_sm->m_hourStart && hour()<m_sm->m_hourStop)
+
+      if (hour()>=m_sm->m_hourStart && hour()<m_sm->m_hourStop) {
         vitesse = VTS_LOW;
+      } else {
+        setVitesse(VTS_OFF, 0);
+        DEBUGLOGF("out hour : %d,%d\n",VTS_OFF,0);
+        return;
+      }
 
       //  vitesse = VTS_OFF;
 
-      if (vmc.m_trend > m_sm->m_HUM_SEUIL) {
+      if (vmc.getTrend() > m_sm->m_HUM_SEUIL) {
         vitesse = VTS_HIGH;
         calculatedDuration = m_sm->m_duration;
       }
 
       if (vitesse == VTS_OFF && ((m_vitesse == VTS_HIGH) ||(m_vitesse == VTS_LOW)) ) {
-          calculatedDuration = 10;
+          calculatedDuration = 30;
       } else if (vitesse == VTS_LOW && m_vitesse == VTS_HIGH ) {
-          calculatedDuration = 10;
+          calculatedDuration = 20;
       }
 
       setVitesse(vitesse, calculatedDuration);
       DEBUGLOGF("Calculated : %d,%d\n",vitesse,calculatedDuration);
 }
-
-
-void  VTSManager::setVitesse(capteurValue vmc, capteurValue ext, uint8_t seuil, uint8_t maxDuration) {
-    // eteint la nuit : 17:00 a 08:00
-    // vitesse HIGH si humidite VMC > EXT et augmente vite ==> pendant une heure
-    // vitesse LOW sinon
-
-    if (m_lastForcedVitesse!=0 && (millis() -m_lastForcedVitesse ) < m_forcedDurationVitesse) {
-      DEBUGLOGF("Not calculated : %d\n",m_vitesse);
-      return;
-    }
-    uint8_t calculatedDuration = 0;
-    uint8_t vitesse = VTS_OFF;
-    if (hour()>6 && hour()<19)
-      vitesse = VTS_LOW;
-    else
-      vitesse = VTS_OFF;
-
-    if (vmc.m_trend > seuil) {
-      vitesse = VTS_HIGH;
-      calculatedDuration = maxDuration;
-    }
-
-    if (vitesse == VTS_OFF && ((m_vitesse == VTS_HIGH) ||(m_vitesse == VTS_LOW)) ) {
-        calculatedDuration = 10;
-    } else if (vitesse == VTS_LOW && m_vitesse == VTS_HIGH ) {
-        calculatedDuration = 10;
-    }
-
-    setVitesse(vitesse, calculatedDuration);
-    DEBUGLOGF("Calculated : %d,%d\n",vitesse,calculatedDuration);
-  }
 
 
 void VTSManager::setVitesse(uint8_t vitesse, uint8_t duration /*=0*/) {
