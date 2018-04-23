@@ -30,8 +30,7 @@
 
 #define MQTT_DEBUG
 #define MQTT_ERROR
-#include <Adafruit_MQTT.h>                                 // Adafruit MQTT library
-#include <Adafruit_MQTT_Client.h>                           // Adafruit MQTT library
+
 //#include <WiFiClient.h>
 
 #define MODULE_NAME VMC_METEO_NAME
