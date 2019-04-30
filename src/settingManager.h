@@ -24,6 +24,8 @@ class SettingManager : public BaseSettingManager
     uint8_t m_duration;
     uint8_t m_hourStart;
     uint8_t m_hourStop;
+    uint8_t m_vitesse;
+    uint8_t m_force;
     SettingManager(unsigned char pinLed);
 
     unsigned char readData();

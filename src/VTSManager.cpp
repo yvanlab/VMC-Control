@@ -23,7 +23,15 @@ void  VTSManager::setVitesse(DHTHumidity vmc, DHTHumidity ext) {
       if (m_lastForcedVitesse!=0 && (millis() -m_lastForcedVitesse ) < m_forcedDurationVitesse) {
         DEBUGLOGF("Not calculated : %d\n",m_vitesse);
         return;
+      };
+
+      if (m_sm->m_force) {
+        setVitesse(m_sm->m_vitesse);
+        //vitesse = m_sm->m_vitesse;
+        DEBUGLOGF("Not calculated Forced : %d\n",m_vitesse);
+        return;
       }
+
       uint8_t calculatedDuration = 0;
       uint8_t vitesse = VTS_OFF;
 

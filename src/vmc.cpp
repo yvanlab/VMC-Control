@@ -23,6 +23,7 @@
 #include "BMPManager.h"
 #include "BMPManagerV2.h"
 #include "VTSManager.h"
+#include "grovestreamsManager.h"
 #include <myTimer.h>
 
 //#include <DateTime.h>
@@ -81,6 +82,7 @@ extern "C" {
 SettingManager          smManager(pinLed);
 WifiManager             wfManager(pinLed,&smManager);
 thingSpeakManager       sfManager(pinLed);
+grovestreamsManager     grovesMgt(pinLed);
 DHTManagerV2            dhtVMC(pinLed,pin_VMC_DHT);
 //BMPManager              bmpEXT(pin_EXT_BPM_SDA,pin_EXT_BPM_SCL,pinLed);
 BMPManagerV2            bmpEXTV2(pinLed);
@@ -129,7 +131,8 @@ String getJson()
     tt += "\"uptime\":\"" +  wfManager.getHourManager()->toUTString() +"\"," ;
     tt += "\"status\":\"" + String(STATUS_PERIPHERIC_WORKING) +"\"," ;
     tt += "\"build_date\":\""+ String(__DATE__" " __TIME__)  +"\"},";
-    tt += "\"datetime\":{" + wfManager.getHourManager()->toDTString(JSON_TEXT) + "},";
+    //tt += "\"datetime\":{" + wfManager.getHourManager()->toDTString(JSON_TEXT) + "},";
+    //tt +=  wfManager.toString(JSON_TEXT) + ",";
     tt += "\"setting\":{" + smManager.toString(JSON_TEXT)  + "},";
     tt += "\"LOG\":["+wfManager.log(JSON_TEXT)  + "," +
                       dhtVMC.log(JSON_TEXT)  + "," +
@@ -137,6 +140,7 @@ String getJson()
                       bmpEXTV2.log(JSON_TEXT) + "," +
                       sfManager.log(JSON_TEXT) + "," +
                       smManager.log(JSON_TEXT) + "," +
+                      grovesMgt.log(JSON_TEXT) + "," +
                       wfManager.getHourManager()->log(JSON_TEXT)+"],";
     tt += "\"VMC\":{"+dhtVMC.toString(JSON_TEXT) + "," + vtsVMC.toString(JSON_TEXT)+"},";
     tt += "\"EXT\":{" + bmpEXTV2.toString(JSON_TEXT) + "," + dhtEXT.toString(JSON_TEXT)+"}}";
@@ -193,7 +197,7 @@ void dataSummaryPage() {
 void displayData() {
 	digitalWrite ( pinLed, LOW );
 
-  char temp[400];
+  //char temp[400];
 
   String message =  "<html>\
     <head>\
@@ -209,8 +213,11 @@ void displayData() {
   message += "<label>Duree:</label><input name='duration' length=2 value=\""+String(smManager.m_duration) +"\"><br>";
   message += "<label>Heure depart:</label><input name='start' length=2 value=\""+String(smManager.m_hourStart) +"\">";
   message += "<label>Heure stop:</label><input name='stop' length=2 value=\""+String(smManager.m_hourStop) +"\"><br>";
+  message += "<label>Current Vitesse:</label><input name='vts' length=2 value=\""+String(vtsVMC.getVitesse()) +"\"><br>";
 
-  message += "<label>Vitesse:</label><input name='vts' length=64 value=\""+String(vtsVMC.getVitesse()) +"\"><br>";
+  message += "<label>Force:</label><input name='force' length=2 value=\""+String(smManager.m_force) +"\"><br>";
+  //message += "<label>Vitesse:</label><input name='vitesse' length=2 value=\""+String(smManager.m_vitesse) +"\"><br>";
+
 
 
 
@@ -251,7 +258,20 @@ void setData(){
 
   str = wfManager.getServer()->arg("vts");
   if (str.length()>0) {
-    vtsVMC.setVitesse(atoi(str.c_str()), true);
+    smManager.m_vitesse = atoi(str.c_str());
+    vtsVMC.setVitesse(smManager.m_vitesse, 1);
+  }
+
+  str = wfManager.getServer()->arg("force");
+  if (str.length()>0) {
+    smManager.m_force= atoi(str.c_str()) >0;
+    if (smManager.m_force) {
+      vtsVMC.setVitesse(smManager.m_vitesse, 1);
+    };/* else {
+
+    }*/
+
+
   }
 
   if (bWriteData)
@@ -261,6 +281,7 @@ void setData(){
 }
 
 void startWiFiserver() {
+  //WiFi.mode(WIFI_NONE_SLEEP);
   if (wfManager.begin(IPAddress(MODULE_IP),MODULE_NAME, MODULE_MDNS, MODULE_MDNS_AP)==WL_CONNECTED) {
     wfManager.getServer()->on ( "/", dataSummaryPage );
     wfManager.getServer()->onNotFound ( dataSummaryPage );
@@ -299,23 +320,18 @@ void setup ( void ) {
   //pinMode(pin_PRESENCE, INPUT_PULLDOWN_16 );
 }
 
-int j = 0 ;
+
+String strTEMP_VMC, strTEMP_PRESSION, strTEMP_EXT, strTEMP_HUMIDITE_VMC, strTEMP_HUMIDITE_EXT;
+//int j = 0 ;
 void loop ( void ) {
 
 	wfManager.handleClient();
   if (mtTimer.isCustomPeriod()) {
-
     dhtVMC.mesure();
-    //dhtVMC.mesureTemperature();
-    //bmpEXT.mesurePressure();
-    //bmpEXT.mesureTemperature();
     dhtEXT.mesure();
     bmpEXTV2.mesure();
-    //dhtEXT.mesureTemperature();
   }
-  /*if (mtTimer.is250MSPeriod())
-    DEBUGLOG("debug mode");*/
-  //WiFiClient client = server.available();
+
   if (mtTimer.is1MNPeriod()) {
       //DEBUGLOG(ESP_PLATFORM );
       DEBUGLOG("debug mode");
@@ -325,19 +341,47 @@ void loop ( void ) {
       DEBUGLOG(bmpEXTV2.toString(STD_TEXT));
       DEBUGLOG(dhtEXT.toString(STD_TEXT));
       DEBUGLOG(getJson());
+      /*dhtVMC.getHumiditySensor()->getValue();
+      dhtVMC.getTemperatureSensor()->getValue();
+      bmpEXTV2.getPressionSensor()->getValue();
+      bmpEXTV2.getTemperatureSensor()->getValue();
+      dhtEXT.getHumiditySensor()->getValue();
+      dhtEXT.getTemperatureSensor()->getValue();
+      dhtVMC.getHumiditySensor()->getTrend();*/
+      //sfManager.addVariable(VITESSE_VMC_LABEL     ,String(vtsVMC.getVitesse()));
 
+      if (WiFi.isConnected()) {
 
-      sfManager.addVariable(HUMIDITE_VMC_LABEL      , String(dhtVMC.getHumiditySensor()->getValue()));
-      sfManager.addVariable(TEMPERATURE_VMC_LABEL   , String(dhtVMC.getTemperatureSensor()->getValue()));
-      sfManager.addVariable(PRESSION_EXT_LABEL      , String(bmpEXTV2.getPressionSensor()->getValue()));
-      sfManager.addVariable(TEMPERATURE_EXT_LABEL   , String(bmpEXTV2.getTemperatureSensor()->getValue()));
-      sfManager.addVariable(HUMIDITE_EXT_LABEL      , String(dhtEXT.getHumiditySensor()->getValue()));
-      sfManager.addVariable(TEMPERATUR_EXT_DHT_LABEL, String(dhtEXT.getTemperatureSensor()->getValue()));
-      sfManager.addVariable(HUMIDITE_TREND_VMC_LABEL, String(dhtVMC.getHumiditySensor()->getTrend()));
+        strTEMP_HUMIDITE_VMC = String(dhtVMC.getHumiditySensor()->getValue());
+        sfManager.addVariable(HUMIDITE_VMC_LABEL      , strTEMP_HUMIDITE_VMC);
+        strTEMP_VMC=String(dhtVMC.getTemperatureSensor()->getValue());
+        sfManager.addVariable(TEMPERATURE_VMC_LABEL   , strTEMP_VMC);
+        strTEMP_PRESSION = String(bmpEXTV2.getPressionSensor()->getValue());
+        sfManager.addVariable(PRESSION_EXT_LABEL      , strTEMP_PRESSION);
+        strTEMP_EXT = String(bmpEXTV2.getTemperatureSensor()->getValue());
+        sfManager.addVariable(TEMPERATURE_EXT_LABEL   , strTEMP_EXT);
+        strTEMP_HUMIDITE_EXT = String(dhtEXT.getHumiditySensor()->getValue());
+        sfManager.addVariable(HUMIDITE_EXT_LABEL      , strTEMP_HUMIDITE_EXT);
+        sfManager.addVariable(TEMPERATUR_EXT_DHT_LABEL, String(dhtEXT.getTemperatureSensor()->getValue()));
+        sfManager.addVariable(HUMIDITE_TREND_VMC_LABEL, String(dhtVMC.getHumiditySensor()->getTrend()));
+        sfManager.addVariable(VITESSE_VMC_LABEL     ,String(vtsVMC.getVitesse()));
+        sfManager.sendIoT( smManager.m_privateKey, smManager.m_publicKey);
 
+      }
       vtsVMC.setVitesse(dhtVMC.m_Humidity , dhtEXT.m_Humidity);
-      sfManager.addVariable(VITESSE_VMC_LABEL     ,String(vtsVMC.getVitesse()));
-      sfManager.sendIoT( smManager.m_privateKey, smManager.m_publicKey);
+
+    }
+
+    if (mtTimer.is1HPeriod()) { 
+    //if (mtTimer.is5MNPeriod()) {
+      if (WiFi.isConnected()) {
+        grovesMgt.addVariable(TEMP_VMC      , strTEMP_VMC);
+        grovesMgt.addVariable(TEMP_EXT      , strTEMP_EXT);
+        grovesMgt.addVariable(TEMP_PRESSION , strTEMP_PRESSION);
+        /*grovesMgt.addVariable(TEMP_HUMIDITE_VMC , strTEMP_HUMIDITE_VMC);
+        grovesMgt.addVariable(TEMP_HUMIDITE_EXT , strTEMP_HUMIDITE_EXT);*/
+        grovesMgt.sendIoT(TEMP_ID);
+      }
     }
 
     if (mtTimer.is5MNPeriod()) {
@@ -352,14 +396,6 @@ void loop ( void ) {
         ESP.restart();
       }
     }
-
-
-    /*if (mtTimer.is1SPeriod()) {
-
-      Serial.print(j++);Serial.print("-");
-      Serial.println(analogRead(pin_PRESENCE));
-    }*/
-
     mtTimer.clearPeriod();
 
   }
