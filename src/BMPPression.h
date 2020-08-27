@@ -60,6 +60,7 @@ class BMPPression : public BMPBase
       if  (fPression>101300 && fPression<102000) return BPM_TEMPS_ORAGEUX;
       if  (fPression>100600 && fPression<101300) return BPM_TEMPS_PLUIE;
       if  (fPression<100600 ) return BPM_TEMPS_TEMPETE;
+      return float(0);
     }
 
     String getClassName(){return "BMPPression";}

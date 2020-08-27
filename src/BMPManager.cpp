@@ -26,6 +26,7 @@ uint8_t getWeatherTrend(float fPression) {
   if  (fPression>101300 && fPression<102000) return BPM_TEMPS_ORAGEUX;
   if  (fPression>100600 && fPression<101300) return BPM_TEMPS_PLUIE;
   if  (fPression<100600 ) return BPM_TEMPS_TEMPETE;
+  return 0;
 }
 
 String BMPManager::toString(boolean bJson = STD_TEXT) {

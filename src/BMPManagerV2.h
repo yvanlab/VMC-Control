@@ -27,13 +27,13 @@ class BMPManagerV2 : public SensorBase
 
     BMPPression     m_Pression;
     BMPTemperature  m_Temperature;
-    Sodaq_BMP085    m_bmp;
+    Sodaq_BMP085    m_bmp;  // ATTENTION  Wire.begin(D3,D4);//begin(int sda, int scl);
 
     BMPManagerV2(uint8_t pinLed) : SensorBase(pinLed) {
 
       m_Pression.setup(pinLed,&m_bmp);//  = new DHTHumidity
       m_Temperature.setup(pinLed,&m_bmp);
-      m_bmp.begin();
+      m_bmp.begin(BMP085_STANDARD); // ATTENTION  Wire.begin(D3,D4);//begin(int sda, int scl);
     };
 
     String toString(boolean bJson)  {
@@ -51,6 +51,7 @@ class BMPManagerV2 : public SensorBase
       m_Pression.mesure();
       m_Temperature.mesure();
       setStatus( m_Temperature.getStatusCode(),m_Temperature.getStatusDescription());
+      return float(0);
     };
 
     void clear() {

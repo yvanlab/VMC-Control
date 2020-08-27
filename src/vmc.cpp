@@ -85,7 +85,7 @@ thingSpeakManager       sfManager(pinLed);
 grovestreamsManager     grovesMgt(pinLed);
 DHTManagerV2            dhtVMC(pinLed,pin_VMC_DHT);
 //BMPManager              bmpEXT(pin_EXT_BPM_SDA,pin_EXT_BPM_SCL,pinLed);
-BMPManagerV2            bmpEXTV2(pinLed);
+BMPManagerV2            bmpEXTV2(pinLed);  // ATTENTION  Wire.begin(D3,D4);//begin(int sda, int scl);
 DHTManagerV2            dhtEXT(pinLed,pin_EXT_EXT_DTH);
 VTSManager              vtsVMC(pin_VMC_VITESSE_R1,pin_VMC_VITESSE_R2,&smManager,pinLed);
 
@@ -352,7 +352,7 @@ void loop ( void ) {
 
       if (WiFi.isConnected()) {
 
-        strTEMP_HUMIDITE_VMC = String(dhtVMC.getHumiditySensor()->getValue());
+       strTEMP_HUMIDITE_VMC = String(dhtVMC.getHumiditySensor()->getValue());
         sfManager.addVariable(HUMIDITE_VMC_LABEL      , strTEMP_HUMIDITE_VMC);
         strTEMP_VMC=String(dhtVMC.getTemperatureSensor()->getValue());
         sfManager.addVariable(TEMPERATURE_VMC_LABEL   , strTEMP_VMC);
@@ -384,7 +384,7 @@ void loop ( void ) {
       }
     }
 
-    if (mtTimer.is5MNPeriod()) {
+    if (mtTimer.is30MNPeriod()) {
       if (wfManager.getHourManager()->isNextDay()) {
         // clear max/min
         dhtVMC.clear();
