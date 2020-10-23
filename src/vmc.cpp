@@ -131,7 +131,7 @@ String getJson()
     tt += "\"uptime\":\"" +  wfManager.getHourManager()->toUTString() +"\"," ;
     tt += "\"status\":\"" + String(STATUS_PERIPHERIC_WORKING) +"\"," ;
     tt += "\"build_date\":\""+ String(__DATE__" " __TIME__)  +"\"},";
-    //tt += "\"datetime\":{" + wfManager.getHourManager()->toDTString(JSON_TEXT) + "},";
+    tt += "\"datetime\":{" + wfManager.getHourManager()->toDTString(JSON_TEXT) + "},";
     //tt +=  wfManager.toString(JSON_TEXT) + ",";
     tt += "\"setting\":{" + smManager.toString(JSON_TEXT)  + "},";
     tt += "\"LOG\":["+wfManager.log(JSON_TEXT)  + "," +
@@ -386,6 +386,7 @@ void loop ( void ) {
 
     if (mtTimer.is30MNPeriod()) {
       if (wfManager.getHourManager()->isNextDay()) {
+         ESP.restart();
         // clear max/min
         dhtVMC.clear();
         dhtEXT.clear();
